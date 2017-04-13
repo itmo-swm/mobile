@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from kivy.garden.mapview import MapView, MapMarker
 #from mapview.geojson import GeoJsonMapLayer
 from geojson import GeoJsonMapLayer
@@ -29,28 +31,17 @@ class MapViewApp(App):
         #mapview = MapView(zoom=11, lat=50.6394, lon=3.057)
         self.mapview = MapView(zoom=map_zoom, lat=self.center[0], lon=self.center[1])
         
-        #r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_sgb?region=region-1', auth=auth_data)
-        #j=r.json()
-        f=open('data/reg1.json')
-        r = ""
-        for l in f.readlines():
-            r += l
-        f.close()
-        j = json.loads(r)
+        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_sgb?region=http://sdn.naulinux.ru:8128/Plone/region-1', auth=auth_data)
+        j=r.json()
         for sgb in j:
-            point = sgb['geometry']['coordinates']
+            r=requests.get(sgb['geometry'], auth=auth_data).json()
+            point = r['features'][0]['geometry']['coordinates']
             mpoint = MapMarker(lon=point[0], lat=point[1], source='data/sgb.png')
             self.mapview.add_marker(mpoint)
         #return self.mapview
 
-        #r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_route', auth=auth_data)
-        #j=r.json()
-        f=open('data/routes.json')
-        r = ""
-        for l in f.readlines():
-            r += l
-        f.close()
-        j = json.loads(r)
+        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_route?region=http://sdn.naulinux.ru:8128/Plone/region-1', auth=auth_data)
+        j=r.json()
         for rj in j:
             r=requests.get('http://sdn.naulinux.ru:8128/Plone/sity-dashboard-1/' + rj['id'] + '/@@geo-json.json', auth=auth_data)
             gjm=GeoJsonMapLayer()
