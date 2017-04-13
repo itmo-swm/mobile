@@ -1,0 +1,3 @@
+title=Smart Waste Manager
+author=Oleg Sadov
+orientation=landscape
