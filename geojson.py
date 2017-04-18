@@ -199,7 +199,7 @@ class GeoJsonMapLayer(MapLayer):
         super(GeoJsonMapLayer, self).__init__(**kwargs)
         with self.canvas:
             self.canvas_polygon = Canvas()
-            self.canvas_line = Line()
+            self.canvas_line = Canvas()
         with self.canvas_polygon.before:
             PushMatrix()
             self.g_matrix = MatrixInstruction()
@@ -288,7 +288,7 @@ class GeoJsonMapLayer(MapLayer):
             self.g_canvas_polygon.clear()
             self._geojson_part(geojson, geotype="Polygon")
         # print "Reload geojson (LineString)"
-        #self.canvas_line.clear()
+        self.canvas_line.clear()
         self._geojson_part(geojson, geotype="LineString")
 
     def on_source(self, instance, value):
@@ -323,8 +323,6 @@ class GeoJsonMapLayer(MapLayer):
         geometry = feature["geometry"]
         graphics = self._geojson_part_geometry(geometry, properties)
         for g in graphics:
-            self.g_canvas_polygon.add(g)
-            return
             tp = geometry["type"]
             if tp == "Polygon":
                 self.g_canvas_polygon.add(g)
@@ -343,7 +341,7 @@ class GeoJsonMapLayer(MapLayer):
 
             tess.tesselate(WINDING_ODD, TYPE_POLYGONS)
 
-            color = self._get_color_from(properties.get("color", "FF000088"))
+            color = self._get_color_from(properties.get("style").get("stroke", "FF000088"))
             graphics.append(Color(*color))
             for vertices, indices in tess.meshes:
                 graphics.append(
@@ -353,15 +351,19 @@ class GeoJsonMapLayer(MapLayer):
                         mode="triangle_fan"))
 
         elif tp == "LineString":
-            stroke = get_color_from_hex(properties.get("stroke", "#ffffff"))
-            stroke_width = dp(properties.get("stroke-width"))
+            stroke = get_color_from_hex(properties.get("style").get("stroke", "#ffffff"))
+            print "stroke: " + `stroke`
+            #storke =  [0.0, 0.0, 0.0, 1]
+
+            print 'properties.get("width") :' + `properties.get("style").get("width")`
+            stroke_width = dp(properties.get("style").get("width")) 
+            print "stroke_width: " + `stroke_width`
             xy = list(self._lonlat_to_xy(geometry["coordinates"]))
             xy = flatten(xy)
             graphics.append(Color(*stroke))
             #graphics.append(Line(points=xy, width=stroke_width))
-            self.canvas_line = Line(points=xy, width=stroke_width)
-            graphics.append(self.canvas_line)
-            
+            graphics.append(Line(points=xy, width=10))
+
         return graphics
 
     def _lonlat_to_xy(self, lonlats):

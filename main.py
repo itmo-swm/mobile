@@ -1,21 +1,43 @@
 #!/usr/bin/python
 
-from kivy.garden.mapview import MapView, MapMarker
-#from mapview.geojson import GeoJsonMapLayer
-from geojson import GeoJsonMapLayer
-from kivy.app import App
 import requests
+#import json
+import time
+from math import *
+
+from kivy.app import App
 from plyer import gps
 from kivy.properties import StringProperty
 from kivy.clock import Clock, mainthread
-import json
+
+from kivy.uix.button import Button
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
+
+from kivy.app import App
+from kivy.clock import Clock
+from kivy.graphics import Color, Line
+from kivy.graphics.transformation import Matrix
+from kivy.graphics.context_instructions import Translate, Scale
+from kivy.garden.mapview import MapView, MapMarker, MapLayer
+from mapview import MIN_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, MAX_LONGITUDE
+from mapview.utils import clamp
+#from mapview.geojson import GeoJsonMapLayer
+from geojson import GeoJsonMapLayer
+import kivy.properties
 
 map_center = [59.93428, 30.335098]
-map_zoom = 14
+map_zoom = 12
 #auth_data=('sitizen','sitizen')
 auth_data=None
 
 class MapViewApp(App):
+    mapview = None
+ 
+    def __init__(self, **kwargs):
+        super(MapViewApp, self).__init__(**kwargs)
+        Clock.schedule_once(self.post, 0)
+ 
     def build(self):
         self.center = map_center
         try:
@@ -28,9 +50,25 @@ class MapViewApp(App):
             traceback.print_exc()
             self.gps_status = 'GPS is not implemented for your platform'
             self.gps = None
+
+        layout = BoxLayout(orientation='vertical')
+
+        return layout
+ 
+    def post(self, *args):
+        layout = FloatLayout()
         #mapview = MapView(zoom=11, lat=50.6394, lon=3.057)
         self.mapview = MapView(zoom=map_zoom, lat=self.center[0], lon=self.center[1])
+        layout.add_widget(self.mapview)
         
+        self.root.add_widget(layout)
+
+        self.show_regions()
+        self.show_sgbs()
+        self.show_routes()
+        self.show_gps()
+
+    def show_sgbs(self):
         r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_sgb?region=http://sdn.naulinux.ru:8128/Plone/region-1', auth=auth_data)
         j=r.json()
         for sgb in j:
@@ -38,21 +76,31 @@ class MapViewApp(App):
             point = r['features'][0]['geometry']['coordinates']
             mpoint = MapMarker(lon=point[0], lat=point[1], source='data/sgb.png')
             self.mapview.add_marker(mpoint)
-        #return self.mapview
 
+    def show_routes(self):
         r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_route?region=http://sdn.naulinux.ru:8128/Plone/region-1', auth=auth_data)
         j=r.json()
         for rj in j:
-            r=requests.get('http://sdn.naulinux.ru:8128/Plone/sity-dashboard-1/' + rj['id'] + '/@@geo-json.json', auth=auth_data)
+            r=requests.get(rj['geometry'], auth=auth_data)
+            gjm=GeoJsonMapLayer()
+            gjm.geojson = r.json()
+            print gjm.geojson
+            self.mapview.add_layer(gjm)
+
+    def show_regions(self):
+        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_regions', auth=auth_data)
+        j=r.json()
+        for rj in j:
+            r=requests.get(rj['geometry'], auth=auth_data)
             gjm=GeoJsonMapLayer()
             gjm.geojson = r.json()
             self.mapview.add_layer(gjm)
-            
+
+    def show_gps(self):
         if self.gps:
             self.mgps = MapMarker(lat=self.gps[0], lon=self.gps[1], source='data/track.png')
             self.mapview.add_marker(self.mgps)
         
-        return self.mapview
 
     @mainthread
     def on_location(self, **kwargs):
