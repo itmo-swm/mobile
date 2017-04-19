@@ -64,8 +64,8 @@ class MapViewApp(App):
         self.root.add_widget(layout)
 
         self.show_regions()
-        self.show_sgbs()
         self.show_routes()
+        self.show_sgbs()
         self.show_gps()
 
     def show_sgbs(self):
