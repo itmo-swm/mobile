@@ -199,7 +199,6 @@ class GeoJsonMapLayer(MapLayer):
         super(GeoJsonMapLayer, self).__init__(**kwargs)
         with self.canvas:
             self.canvas_polygon = Canvas()
-            self.canvas_line = Canvas()
         with self.canvas_polygon.before:
             PushMatrix()
             self.g_matrix = MatrixInstruction()
@@ -287,9 +286,8 @@ class GeoJsonMapLayer(MapLayer):
             # print "Reload geojson (polygon)"
             self.g_canvas_polygon.clear()
             self._geojson_part(geojson, geotype="Polygon")
-        # print "Reload geojson (LineString)"
-        self.canvas_line.clear()
-        self._geojson_part(geojson, geotype="LineString")
+            # print "Reload geojson (LineString)"
+            self._geojson_part(geojson, geotype="LineString")
 
     def on_source(self, instance, value):
         if value.startswith("http://") or value.startswith("https://"):
@@ -323,11 +321,7 @@ class GeoJsonMapLayer(MapLayer):
         geometry = feature["geometry"]
         graphics = self._geojson_part_geometry(geometry, properties)
         for g in graphics:
-            tp = geometry["type"]
-            if tp == "Polygon":
-                self.g_canvas_polygon.add(g)
-            else:
-                self.canvas_line.add(g)
+            self.g_canvas_polygon.add(g)
 
     def _geojson_part_geometry(self, geometry, properties):
         tp = geometry["type"]
@@ -356,13 +350,12 @@ class GeoJsonMapLayer(MapLayer):
             #storke =  [0.0, 0.0, 0.0, 1]
 
             print 'properties.get("width") :' + `properties.get("style").get("width")`
-            stroke_width = dp(properties.get("style").get("width")) 
+            stroke_width = dp(properties.get("style").get("width"))
             print "stroke_width: " + `stroke_width`
             xy = list(self._lonlat_to_xy(geometry["coordinates"]))
             xy = flatten(xy)
             graphics.append(Color(*stroke))
-            #graphics.append(Line(points=xy, width=stroke_width))
-            graphics.append(Line(points=xy, width=10))
+            graphics.append(Line(points=xy, width=stroke_width))
 
         return graphics
 
