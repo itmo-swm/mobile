@@ -28,8 +28,8 @@ import kivy.properties
 
 map_center = [59.93428, 30.335098]
 map_zoom = 12
-#auth_data=('sitizen','sitizen')
-auth_data=None
+auth_data=('citizen','citizen')
+#auth_data=None
 
 class MapViewApp(App):
     mapview = None
@@ -69,7 +69,7 @@ class MapViewApp(App):
         self.show_gps()
 
     def show_sgbs(self):
-        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_sgb?region=http://sdn.naulinux.ru:8128/Plone/region-1', auth=auth_data)
+        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_sgb?region=http://sdn.naulinux.ru:8128/Plone/swm/map/waste-management-operator-1/region-1', auth=auth_data)
         j=r.json()
         for sgb in j:
             r=requests.get(sgb['geometry'], auth=auth_data).json()
@@ -78,13 +78,14 @@ class MapViewApp(App):
             self.mapview.add_marker(mpoint)
 
     def show_routes(self):
-        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_route?region=http://sdn.naulinux.ru:8128/Plone/region-1', auth=auth_data)
+        r=requests.get('http://sdn.naulinux.ru:8128/Plone/swm_scripts/get_route?region=http://sdn.naulinux.ru:8128/Plone/swm/map/waste-management-operator-1/region-1', auth=auth_data)
         j=r.json()
+        #print "j: " + `j`
         for rj in j:
             r=requests.get(rj['geometry'], auth=auth_data)
             gjm=GeoJsonMapLayer()
             gjm.geojson = r.json()
-            print gjm.geojson
+            #print "gjm: " + `gjm.geojson`
             self.mapview.add_layer(gjm)
 
     def show_regions(self):
