@@ -1,5 +1,8 @@
 [app]
 
+# (str) Application versioning (method 1)
+version = 0.7
+
 # (str) Title of your application
 title = Smart Waste Manager
 
@@ -27,9 +30,6 @@ source.include_patterns = assets/*,images/*.png,data/*.json
 
 # (list) List of exclusions using pattern matching
 #source.exclude_patterns = license,images/*/*.jpg
-
-# (str) Application versioning (method 1)
-version = 0.6
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -77,7 +77,7 @@ fullscreen = 1
 
 # (list) Permissions
 #android.permissions = INTERNET
-android.permissions = INTERNET,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION
+android.permissions = INTERNET,ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,RECORD_AUDIO,CAMERA
 
 # (int) Android API to use
 #android.api = 19

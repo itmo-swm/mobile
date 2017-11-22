@@ -27,8 +27,7 @@ class PortalApp(App):
  
     def build_config(self, config):
         config.setdefaults('login',
-                           {'url': 'http://sdn.naulinux.ru:8128/Plone/',
-                            'username': '', 'password': ''})
+                           {'url': '', 'username': '', 'password': ''})
 
     def get_application_config(self):
         return ('swm.ini')
