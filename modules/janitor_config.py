@@ -11,9 +11,10 @@ functions = [
     ]
 
 msg_types = [
-    "Waste bin crash",
-    "Poor quality of garbage collection",
-    "Can not access garbage bin",
-    "For a long time, garbage is not removed"
+    "SGB breakdown",
+    "No access to SGB",
+    "Garbage is not cleaned for a long time",
+    "SGB overflowing",
+    "Odors from SGB"
 ]
 

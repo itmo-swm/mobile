@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+import sys
+reload(sys)  
+sys.setdefaultencoding('utf-8')
+
 import utils
 
 try:

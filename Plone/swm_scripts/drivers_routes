@@ -1,0 +1,9 @@
+# Script for getting of drirver's routes
+# Parameters: driver
+
+for d in context.swm_drivers:
+ s = d.split('|')
+ if s[1] == driver:
+  print '{"id": "%s", "name": "%s", "region": "%s", "track": "%s", "route": "%s"}' % (s[0], s[1], s[2], s[3],s[4])
+ 
+return printed

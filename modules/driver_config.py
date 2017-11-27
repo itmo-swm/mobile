@@ -4,6 +4,7 @@ gps_image = 'swm/track.png'
 msg_path = '/messages/drivers'
 
 functions = [
+    'msg_receive',
     'show_regions',
     'show_sgbs',
     'show_routes',
@@ -11,9 +12,14 @@ functions = [
     ]
 
 msg_types = [
-    "Waste bin crash",
-    "Poor quality of garbage collection",
-    "Can not access garbage bin",
-    "For a long time, garbage is not removed"
+    'No access to SGB',
+    'Traffic jam',
+    'Accident on the road',
+    'Road works on the route',
+    'Breakdown of the car',
+    'The car got into an accident',
+    'SGB breakdown'
 ]
 
+msg_period = 5
+msg_num = 3

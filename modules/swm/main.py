@@ -9,6 +9,7 @@ import os
 import requests
 import base64
 import time
+import json
 from datetime import datetime
 from math import *
 
@@ -58,6 +59,7 @@ class SWMApp(PortalApp):
         super(SWMApp, self).__init__(**kwargs)
         self.center = map_center
         self.get_config()
+        
         try:
              gps.configure(on_location=self.on_location,
                            on_status=self.on_status)
@@ -68,6 +70,7 @@ class SWMApp(PortalApp):
             traceback.print_exc()
             self.gps_status = 'GPS is not implemented for your platform'
             self.gps = None
+            
         Clock.schedule_once(self.post, 0)
         
         
@@ -77,6 +80,92 @@ class SWMApp(PortalApp):
     
     def post(self, *args):
         self.show()
+        Clock.schedule_interval(self.msg_receive, msg_period)
+
+    def goto_url(self, instance, value):
+        print "clicked URL: " + value
+        
+    def msg_receive(self, *args):
+        msg_file = self.user_data_dir + "/messages.json"
+        try:
+            f = open(msg_file,'r+')
+            messages = json.load(f)
+        except:
+            f = open(msg_file, 'a+')
+            messages = []
+
+        if len(messages):
+            last = sorted(map(lambda x: x['date'], messages), reverse=1)[0]
+        else:
+            last = "0"
+
+        url = self.url + 'swm_scripts/get_dmessages?driver=%s&time=%s' % \
+            (self.username, last)
+
+        print "URl: " + url
+        
+        r=requests.get(url, auth=(self.username, self.password))
+        if r.status_code == 200:
+            messages += r.json()
+            dmessages = sorted(map(lambda x: x['date'], messages),
+                                    reverse=1)
+            print "DM: "  + `dmessages`
+            msg = ""
+            i=0
+            for mdate in dmessages:
+                if i < msg_num:
+                    print "D: "  + `mdate`
+                    message = filter(lambda x: x['date'] == mdate, messages)[0]
+                    print "M: "  + `message`
+                    mdate = mdate.split('T')
+                    mdate = mdate[0] + " "  + mdate[1].split('+')[0]
+                    #msg += "                [color=ff3333][b]%s:[/b] %s[/color]\n" % \
+                    msg += "[color=ff3333](%s) [b]%s[/b]: %s[/color]\n" % \
+                           (mdate,message['title'],
+                            message['desription'])
+                    print "MSG: " + msg.encode("utf-8")
+                    i += 1
+            self.msg_label.text = msg
+        else:
+            print "ERR (%d): %s" % (r.status_code, r.text)
+            
+    def msg_send(self):
+        self.message_type=getattr(self.type_btn, 'text')
+        self.message_text=self.msg_descr_txt
+
+        url = self.url + msg_path
+
+        #print "URL: " + url
+        #print "Type: " + self.message_type
+        #print "Text: " + self.message_text
+        #print "Photo: " + self.message_photo
+        #print "Video: " + self.message_video
+        #print "Audio: " + self.message_audio
+
+        folder_name = self.username + "_" + \
+                      datetime.now().strftime("%Y%m%d%H%M")
+        
+        r=requests.post(url,
+                        headers={'Accept': 'application/json'},
+                        json={'@type': 'Folder',
+                              'id': folder_name,
+                              'title': self.message_type,
+                              "description": self.message_text.encode("utf-8")},
+                        auth=(self.username, self.password))
+
+        url += "/" + folder_name
+        
+        if self.message_photo:
+            r = self.send_file(url, ftype="image/jpg",
+                               filename=self.message_photo, name="photo")
+        if self.message_video:
+            r = self.send_file(url, ftype="video/mp4",
+                               filename=self.message_video, name="video")
+        if self.message_audio:
+            r = self.send_file(url, ftype="audio/3gpp",
+                               filename=self.message_audio, name="audio")
+
+        return r
         
     def show(self):
         if self.root:
@@ -87,7 +176,34 @@ class SWMApp(PortalApp):
                                lat=self.center[0], lon=self.center[1])
         self.layout.add_widget(self.mapview)
         self.root.add_widget(self.layout)
+
+        vbox  = BoxLayout(orientation='vertical',
+                          height='64dp',size_hint_y=None)
+
+        bmessage = BoxLayout(orientation='horizontal',
+                             height='32dp',#size_hint_y=None,
+                             size_hint=(None, None),
+                             pos_hint={'x':0.20},
+                             #pos=(10,10)
+        )
+
+        self.msg_label=Label(text="", markup=True,
+                             #size_hint_x=None, height=40,
+                             #size_hint_y=None, height=40,
+                             size_hint=(None, None),
+                             #pos=(.20,.20),
+                             #pos_hint={'x':0.10}
+        )
+        bmessage.add_widget(self.msg_label)
         
+        #bmessage.add_widget(Label(text="",
+        #                          size_hint_x=100,
+        #                          width=10))
+
+        #self.msg_label.bind(on_ref_press=self.goto_url)
+
+        vbox.add_widget(bmessage)
+
         self.buttons = BoxLayout(orientation='horizontal',
                                  height='32dp',size_hint_y=None)
         self.msg_btn = Button(text="Message",
@@ -96,7 +212,9 @@ class SWMApp(PortalApp):
         self.cfg_btn = Button(text="Configure",
                               on_press=lambda a: self.portal())
         self.buttons.add_widget(self.cfg_btn)
-        self.root.add_widget(self.buttons)
+
+        vbox.add_widget(self.buttons)
+        self.root.add_widget(vbox)
 
         # Running functions from configure.py
         for f in functions:
@@ -111,7 +229,6 @@ class SWMApp(PortalApp):
 	pass
 
     def send_file(self, url, ftype=None, filename=None, name=None):
-        #with open("swm/man.png", "rb") as src_file:
         with open(filename, "rb") as src_file:
             encoded_string = base64.b64encode(src_file.read())
 
@@ -123,9 +240,6 @@ class SWMApp(PortalApp):
                   "filename": filename,
                   "content-type": ftype}}
 
-        print "URL: " + url
-        print "FJSON: " + `fjson`
-        
         r=requests.post(url,
                         headers={'Accept': 'application/json'},
                         json = fjson,
@@ -134,49 +248,6 @@ class SWMApp(PortalApp):
         self.show()
         return r
 
-    def msg_send(self):
-        self.message_type=getattr(self.type_btn, 'text')
-        self.message_text=self.msg_descr_txt
-
-        url = self.url + msg_path
-
-        print "URL: " + url
-        print "Type: " + self.message_type
-        print "Text: " + self.message_text
-        print "Photo: " + self.message_photo
-        print "Video: " + self.message_video
-        print "Audio: " + self.message_audio
-
-        folder_name = self.username + "_" + \
-                      datetime.now().strftime("%Y%m%d%H%M")
-        
-        r=requests.post(url,
-                        headers={'Accept': 'application/json'},
-                        json={'@type': 'Folder',
-                              'id': folder_name,
-                              'title': self.message_type,
-                              "description": self.message_text},
-                        auth=(self.username, self.password))
-        print "R1: " + `r`
-
-        url += "/" + folder_name
-        
-        if self.message_photo:
-            r = self.send_file(url, ftype="image/jpg",
-                               filename=self.message_photo, name="photo")
-            print "R2: " + `r`
-        if self.message_video:
-            r = self.send_file(url, ftype="video/mp4",
-                               filename=self.message_video, name="video")
-            print "R3: " + `r`
-
-        if self.message_audio:
-            r = self.send_file(url, ftype="audio/3gpp",
-                               filename=self.message_audio, name="audio")
-            print "R4: " + `r`
-
-        return r
-        
     def mm_callback(self, filepath):
         if(exists(filepath)):
             print "Saved " + filepath
@@ -221,7 +292,7 @@ class SWMApp(PortalApp):
         self.message_audio=""
 
         self.types = msg_types
-        #self.layout = GridLayout(cols=2, row_force_default=True, row_default_height=40)
+
         layout = BoxLayout(orientation='vertical')
         
         layout.add_widget(Label(text="Message writing",
@@ -230,10 +301,11 @@ class SWMApp(PortalApp):
                                 height=40, font_size=32,
                                 halign='center', valign='middle'))
         
-        grid = GridLayout(cols=3)
+        grid = GridLayout(cols=2)
+
         grid.add_widget(Label(text="Type:",
-                              size_hint_x=None, width=100,
-                              size_hint_y=None, height=40))
+                      size_hint_x=None, width=300,
+                      size_hint_y=None, height=40))
         self.msg_type = DropDown()
         for t in self.types:
             btn = Button(text=t, size_hint_y=None, height=40)
@@ -241,8 +313,9 @@ class SWMApp(PortalApp):
             self.msg_type.add_widget(btn)
 
         self.type_btn = Button(text="Select type of message...",
-                               size_hint_y=None, height=40)
-        grid.add_widget(self.type_btn)
+                               size_hint_y=None, height=40,
+                               size_hint_x=None, width=600
+        )
 
         self.type_btn.bind(on_release=self.msg_type.open)
 
@@ -250,7 +323,11 @@ class SWMApp(PortalApp):
                           x: setattr(self.type_btn, 'text', x))
 
         self.rec_buttons = BoxLayout(orientation='horizontal',
-                                 height='32dp',size_hint_y=None)
+                                     height='32dp', width=1700,
+                                     size_hint_x=None,size_hint_y=None)
+
+        self.rec_buttons.add_widget(self.type_btn)
+
         self.pht_btn = Button(text="Photo",
                               on_press=lambda a: self.photo())
         self.rec_buttons.add_widget(self.pht_btn)
@@ -264,9 +341,13 @@ class SWMApp(PortalApp):
         self.rec_buttons.add_widget(self.vid_btn)
 
         grid.add_widget(self.rec_buttons)
-            
+
+
+        descr = BoxLayout(orientation='horizontal',
+
+                          size_hint_y=None,valign='top')
         grid.add_widget(Label(text="Description:",
-                              size_hint_x=None, width=200,valign='top',
+                              size_hint_x=None, width=300,valign='top',
                               size_hint_y=0.1, height=40))
         self.msg_descr = TextInput()
         def msg_descr_txt_set(i, v):
@@ -274,6 +355,8 @@ class SWMApp(PortalApp):
         self.msg_descr.bind(text=msg_descr_txt_set)
         grid.add_widget(self.msg_descr)
 
+        grid.add_widget(descr)
+        
         layout.add_widget(grid)
         
         self.buttons = BoxLayout(orientation='horizontal',

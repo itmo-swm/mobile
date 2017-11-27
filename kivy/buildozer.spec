@@ -1,7 +1,7 @@
 [app]
 
 # (str) Application versioning (method 1)
-version = 0.7
+version = 0.8
 
 # (str) Title of your application
 title = Smart Waste Manager
