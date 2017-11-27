@@ -53,54 +53,58 @@ class PortalApp(App):
         if self.root:
             self.root.clear_widgets()
 
-        self.setup_form = BoxLayout(orientation='vertical',
-                                    height='32dp',size_hint_y=None)
-        self.setup_form.spacing = 40
-        self.setup_form.padding = [10,50,10,50]
+        self.setup_form = BoxLayout(orientation='vertical')
+                                    #height='32dp',size_hint_y=None)
+        #self.setup_form.spacing = 40
+        #self.setup_form.padding = [10,50,10,50]
 
-        l = Label(text=message)
+        l = Label(text=message) #, font_size=32)
         l.halign = 'center'
-        l.font_size=font_large
+        #l.font_size=font_large
         self.setup_form.add_widget(l)
 
-        b = BoxLayout(orientation='vertical',size_hint_y=None)
+        b = BoxLayout(orientation='vertical',size_hint_y=None, height=150)
         l = Label(text="URL:")
         l.halign = 'left'
-        l.font_size=font_small
+        #l.font_size=font_small
         b.add_widget(l)
         self.input_url = TextInput(text=self.url)
-        self.input_url.font_size=font_middle
+        #self.input_url.font_size=font_middle
         b.add_widget(self.input_url)
         self.setup_form.add_widget(b)
 
-        b = BoxLayout(orientation='vertical',size_hint_y=None)
+        b = BoxLayout(orientation='vertical',size_hint_y=None, height=150)
         l = Label(text="Login:")
         l.halign = 'left'
 
-        l.font_size=font_small
+        #l.font_size=font_small
         b.add_widget(l)
         self.input_login = TextInput(text=self.username)
-        self.input_login.font_size=font_middle
+        #self.input_login.font_size=font_middle
         b.add_widget(self.input_login)
         self.setup_form.add_widget(b)
 
-        b = BoxLayout(orientation='vertical',size_hint_y=None)
+        b = BoxLayout(orientation='vertical',size_hint_y=None, height=150)
         l = Label(text="Password:")
         l.halign = 'left'
-        l.font_size=font_small
+        #l.font_size=font_small
         b.add_widget(l)
         self.input_passwd = TextInput(text=self.password)
-        self.input_passwd.font_size=font_middle
+        #self.input_passwd.font_size=font_middle
         self.input_passwd.password=True
         b.add_widget(self.input_passwd)
         self.setup_form.add_widget(b)
+
+        self.setup_form.add_widget(BoxLayout(orientation='vertical',
+                                             size_hint_y=None, height=300))
 
         if buttons:
             self.buttons = buttons
         else:
             self.buttons = BoxLayout(orientation='horizontal',
                                      height='32dp',size_hint_y=None)
-            self.msg_btn = Button(text="Connect",on_press=lambda a: self.config_save_stop())
+            self.msg_btn = Button(text="Connect",
+                                  on_press=lambda a: self.config_save_stop())
             self.msg_btn.font_size=font_large
             self.buttons.add_widget(self.msg_btn)
             self.cfg_btn = Button(text="Reset",
@@ -127,12 +131,9 @@ class PortalApp(App):
         self.config.write()
         self.get_module()
         try:
-            print "ST1"
             self.get_module()
-            print "ST2"
             self.stop()
         except:
-            print "ST3"
             self.portal_setup()
         
     def config_save(self):
