@@ -5,6 +5,6 @@ member = context.portal_membership.getAuthenticatedMember()
 
 for g in member.getGroups():
  if g in context.swm_groups:
-  print g
+  print platform + "_" + g
 
 return printed
