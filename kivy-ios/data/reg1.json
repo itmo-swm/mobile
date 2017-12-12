@@ -1,0 +1,80 @@
+[
+{
+"id":"sgb-1-1",
+"title":"sgb 1-1",
+"desription":"",
+"geometry": { "type": "Point", "coordinates": [30.310221111389417, 59.96497880863895]},
+"cleaning_time":"None",
+"rfid":"5",
+"state":"1",
+"sensor":"sensor data",
+"max":"100",
+"volume":"10",
+"type":"organic"
+},
+{
+"id":"sgb-1-2",
+"title":"sgb 1-2",
+"desription":"",
+"geometry": { "type": "Point", "coordinates": [30.309276973816097, 59.96437735239504]},
+"cleaning_time":"None",
+"rfid":"5",
+"state":"1",
+"sensor":"sensor data",
+"max":"100",
+"volume":"10",
+"type":"organic"
+},
+{
+"id":"sgb-2-1",
+"title":"sgb 2-1",
+"desription":"",
+"geometry": { "type": "Point", "coordinates": [30.294225757932338, 59.95509635772744]},
+"cleaning_time":"None",
+"rfid":"5",
+"state":"1",
+"sensor":"sensor data",
+"max":"100",
+"volume":"10",
+"type":"organic"
+},
+{
+"id":"sgb-3-1",
+"title":"sgb 3-1",
+"desription":"",
+"geometry": { "type": "Point", "coordinates": [30.214502459393536, 59.95308963194999]},
+"cleaning_time":"None",
+"rfid":"5",
+"state":"1",
+"sensor":"sensor data",
+"max":"100",
+"volume":"10",
+"type":"dangerous"
+},
+{
+"id":"sgb-1-3",
+"title":"sgb 1-3",
+"desription":"",
+"geometry": { "type": "Point", "coordinates": [30.308945721003706, 59.9641840248547]},
+"cleaning_time":"None",
+"rfid":"5",
+"state":"1",
+"sensor":"sensor data",
+"max":"100",
+"volume":"10",
+"type":"dangerous"
+},
+{
+"id":"sgb-4-1",
+"title":"sgb 4-1",
+"desription":"",
+"geometry": { "type": "Point", "coordinates": [30.250399803739285, 59.96114333097791]},
+"cleaning_time":"None",
+"rfid":"5",
+"state":"1",
+"sensor":"sensor data",
+"max":"100",
+"volume":"10",
+"type":"organic"
+}
+]

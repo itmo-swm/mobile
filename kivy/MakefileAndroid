@@ -1,15 +1,15 @@
 VERSION := $(shell grep 'version = ' buildozer.spec | sed 's/.*= *\([0-9\.]*\)/\1/')
 
 build:
-	buildozer -v ios debug
+	buildozer -v android debug
 
 init:
-	buildozer -v ios debug
+	buildozer -v android debug
 	garden install --app mapview
-	buildozer -v ios debug
+	buildozer -v android debug
 
 load:
-	buildozer -v ios deploy run logcat
+	buildozer -v android deploy run logcat
 
 git:
 	LANG=C git commit -a
