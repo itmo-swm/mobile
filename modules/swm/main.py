@@ -9,8 +9,10 @@ import os
 import requests
 import base64
 import time
+import json
 from datetime import datetime
 from math import *
+import urllib
 
 from portal import PortalApp
 
@@ -31,7 +33,7 @@ from kivy.graphics.context_instructions import Translate, Scale
 from kivy.garden.mapview import MapView, MapMarker, MapLayer
 from mapview import MIN_LONGITUDE, MIN_LATITUDE, MAX_LATITUDE, MAX_LONGITUDE
 from mapview.utils import clamp
-#from mapview.geojson import GeoJsonMapLayer
+
 import kivy.properties
 from kivy.lang import Builder
 from kivy.uix.widget import Widget
@@ -39,25 +41,34 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.dropdown import DropDown
 
 from plyer import camera, audio
-#from plyer.facades import Audio
 
-
-#from connected import Connected
-#from swm import MapViewApp
 from kivy.core.window import Window
 Window.softinput_mode = 'below_target'
-#Window.softinput_mode = 'pan'
 
 from plyer import gps
 from geojson import GeoJsonMapLayer
+
+from kivy.utils import platform
+from plyer import battery
+from gtts import gTTS
+from kivy.core.audio import SoundLoader
+
+from multiprocessing import Process
 
 class SWMApp(PortalApp):
     mapview = None
  
     def __init__(self, **kwargs):
         super(SWMApp, self).__init__(**kwargs)
-        self.center = map_center
         self.get_config()
+        self.center = map_center
+        self.run_audio = 0
+        self.msg_txts = {}
+        self.msg_label=Label(text="", markup=True,
+                             text_size=(750, None),
+                             size_hint=(None, None)
+        )
+        
         try:
              gps.configure(on_location=self.on_location,
                            on_status=self.on_status)
@@ -68,26 +79,196 @@ class SWMApp(PortalApp):
             traceback.print_exc()
             self.gps_status = 'GPS is not implemented for your platform'
             self.gps = None
+            
+        self.get_mod()
         Clock.schedule_once(self.post, 0)
-        
+
         
     def build(self):
-        layout = BoxLayout(orientation='vertical')
+        #layout = BoxLayout(orientation='vertical')
         return FloatLayout()
     
     def post(self, *args):
         self.show()
+        if 'msg_period' in globals():
+            Clock.schedule_interval(self.msg_receive, msg_period)
+
+    def msg_receive(self, *args):
+        msg_file = self.user_data_dir + "/messages.json"
+        try:
+            f = open(msg_file,'r+')
+            messages = json.load(f)
+        except:
+            f = open(msg_file, 'a+')
+            messages = []
+
+        if len(messages):
+            last = sorted(map(lambda x: x['date'], messages), reverse=1)[0]
+        else:
+            last = "0"
+
+        url = self.url + 'swm_scripts/get_dmessages?driver=%s&time=%s' % \
+            (self.username, last)
+
+        r=requests.get(url, auth=(self.username, self.password))
+        if r.status_code == 200:
+            messages += r.json()
+            dmessages = sorted(map(lambda x: x['date'], messages),
+                                    reverse=1)
+            msg = ""
+            head = "                                "
+            i=0
+            for mdate in dmessages:
+                if i < msg_num:
+                    message = filter(lambda x: x['date'] == mdate, messages)[0]
+                    mdate = mdate.split('T')
+                    mdate = mdate[0] + " "  + mdate[1].split('+')[0]
+                    #msg += "[color=ff3333](%s) [b]%s[/b]: %s[/color]\n" % \
+
+                    str = "[color=ff3333](%s) [b]%s:[/b] %s[/color]\n" % \
+                           (mdate, message['title'], message['desription'])
+                    #str = head + '\n'.join([str[i:i+120] for i in range(0, len(str), 180)])
+                    #msg += head + str
+                    msg += str
+
+                    if not self.msg_txts.has_key(mdate):
+                        self.msg_txts[mdate]={'text':message['title'] + " " +
+                                              message['desription'],
+                                              'say': 1}
+                    i += 1
+            self.msg_label.text = msg
+            print "R: " + `self.run_audio`
+            if self.run_audio:
+                self.show_audio()
+        else:
+            print "ERR (%d): %s" % (r.status_code, r.text)
+            
+    def msg_send(self):
+        self.message_type=getattr(self.type_btn, 'text')
+        self.message_text=self.msg_descr_txt
+
+        url = self.url + msg_path
+
+        folder_name = self.username + "_" + \
+                      datetime.now().strftime("%Y%m%d%H%M")
         
+        r=requests.post(url,
+                        headers={'Accept': 'application/json'},
+                        json={'@type': 'Folder',
+                              'id': folder_name,
+                              'title': self.message_type,
+                              "description": self.message_text.encode("utf-8")},
+                        auth=(self.username, self.password))
+
+        url += "/" + folder_name
+        
+        if self.message_photo:
+            r = self.send_file(url, ftype="image/jpg",
+                               filename=self.message_photo, name="photo")
+        if self.message_video:
+            r = self.send_file(url, ftype="video/mp4",
+                               filename=self.message_video, name="video")
+        if self.message_audio:
+            r = self.send_file(url, ftype="audio/3gpp",
+                               filename=self.message_audio, name="audio")
+
+        return r
+
+    def get_mod(self):
+        url = '%s/aui_get?platform=%s&time=%s&battery=%f' % \
+              (self.url, platform, urllib.quote(datetime.now().ctime()),
+               battery.status['percentage'])
+        if self.gps:
+            url += "&coordinates=%s,%s" % (self.gps[0], self.gps[1])
+
+        print "URL:" + url
+        
+        r=requests.get(url, auth=(self.username, self.password))
+        if r.status_code == 200:
+            self.uis=r.json()
+        else:
+            self.portal_setup(buttons=self.setup_buttons())
+
+        self.mod_graph = 1
+        self.mod_text = 1
+        self.mod_audio = 0
+
     def show(self):
+        self.run_audio = 0
         if self.root:
             self.root.clear_widgets()
-        print "Show!!!"
-        self.layout = FloatLayout()
-        self.mapview = MapView(zoom=map_zoom,
-                               lat=self.center[0], lon=self.center[1])
-        self.layout.add_widget(self.mapview)
-        self.root.add_widget(self.layout)
+        vbox = BoxLayout(orientation='vertical',
+                          height='64dp')#,size_hint_y=None)
+
+        msg_label=Label(text="Select the preferred interface type:",
+                             markup=True,
+                             #size_hint=(None, None),
+        )
         
+        vbox.add_widget(msg_label)
+
+        for ui in sorted(self.uis, lambda x,y: cmp(y['weight'], x['weight'])):
+            funcs = ui['function']
+            name = reduce(lambda x, y: x + ", " + y, ui['name'])
+            name = "%s (%d)" % (name, ui['weight'])
+            button = Button(text = name, on_press = self.show_map)
+            button.funcs = funcs
+            vbox.add_widget(button)
+        
+        self.buttons = BoxLayout(orientation='horizontal',
+                                 height='32dp',size_hint_y=None)
+        self.rld_btn = Button(text="Reload",
+                              on_press=lambda a: self.show())
+        self.buttons.add_widget(self.rld_btn)
+        self.cfg_btn = Button(text="Configure",
+                              on_press=lambda a: self.portal())
+        self.buttons.add_widget(self.cfg_btn)
+
+        vbox.add_widget(self.buttons)
+        self.root.add_widget(vbox)
+
+    def set_mod(self, funcs):
+        self.mod_graph = 0
+        self.mod_text = 0
+        self.mod_audio = 0
+        
+        if 'audio_ui' in funcs:
+            self.mod_audio = 1
+        if 'text_ui' in funcs:
+            self.mod_text = 1
+        if 'graph_ui' in funcs:
+            self.mod_graph = 1
+            
+    def show_map(self, args):
+        self.set_mod(args.funcs)
+        
+        if self.root:
+            self.root.clear_widgets()
+
+        self.layout = FloatLayout()
+        if self.mod_graph:
+            self.mapview = MapView(zoom=map_zoom,
+                                   lat=self.center[0], lon=self.center[1])
+            self.layout.add_widget(self.mapview)
+            self.root.add_widget(self.layout)
+        else:
+            self.mapview = None
+
+        vbox  = BoxLayout(orientation='vertical',
+                          height='64dp',size_hint_y=None)
+
+        bmessage = BoxLayout(orientation='horizontal',
+                             height='32dp',
+                             size_hint=(None, None),
+#                             pos_hint={'x':0.20},
+                             pos_hint={'x':0.45},
+        )
+
+        bmessage.add_widget(self.msg_label)
+        
+        if self.mod_text:
+            vbox.add_widget(bmessage)
+
         self.buttons = BoxLayout(orientation='horizontal',
                                  height='32dp',size_hint_y=None)
         self.msg_btn = Button(text="Message",
@@ -96,12 +277,16 @@ class SWMApp(PortalApp):
         self.cfg_btn = Button(text="Configure",
                               on_press=lambda a: self.portal())
         self.buttons.add_widget(self.cfg_btn)
-        self.root.add_widget(self.buttons)
+
+        vbox.add_widget(self.buttons)
+        self.root.add_widget(vbox)
 
         # Running functions from configure.py
         for f in functions:
             getattr(self, f)()
 
+        self.run_audio = 1
+            
     def on_pause(self):
 	#when the app open the camera, it will need to pause this script. So we need to enable the pause mode with this method
 	return True
@@ -111,7 +296,6 @@ class SWMApp(PortalApp):
 	pass
 
     def send_file(self, url, ftype=None, filename=None, name=None):
-        #with open("swm/man.png", "rb") as src_file:
         with open(filename, "rb") as src_file:
             encoded_string = base64.b64encode(src_file.read())
 
@@ -123,9 +307,6 @@ class SWMApp(PortalApp):
                   "filename": filename,
                   "content-type": ftype}}
 
-        print "URL: " + url
-        print "FJSON: " + `fjson`
-        
         r=requests.post(url,
                         headers={'Accept': 'application/json'},
                         json = fjson,
@@ -134,55 +315,11 @@ class SWMApp(PortalApp):
         self.show()
         return r
 
-    def msg_send(self):
-        self.message_type=getattr(self.type_btn, 'text')
-        self.message_text=self.msg_descr_txt
-
-        url = self.url + msg_path
-
-        print "URL: " + url
-        print "Type: " + self.message_type
-        print "Text: " + self.message_text
-        print "Photo: " + self.message_photo
-        print "Video: " + self.message_video
-        print "Audio: " + self.message_audio
-
-        folder_name = self.username + "_" + \
-                      datetime.now().strftime("%Y%m%d%H%M")
-        
-        r=requests.post(url,
-                        headers={'Accept': 'application/json'},
-                        json={'@type': 'Folder',
-                              'id': folder_name,
-                              'title': self.message_type,
-                              "description": self.message_text},
-                        auth=(self.username, self.password))
-        print "R1: " + `r`
-
-        url += "/" + folder_name
-        
-        if self.message_photo:
-            r = self.send_file(url, ftype="image/jpg",
-                               filename=self.message_photo, name="photo")
-            print "R2: " + `r`
-        if self.message_video:
-            r = self.send_file(url, ftype="video/mp4",
-                               filename=self.message_video, name="video")
-            print "R3: " + `r`
-
-        if self.message_audio:
-            r = self.send_file(url, ftype="audio/3gpp",
-                               filename=self.message_audio, name="audio")
-            print "R4: " + `r`
-
-        return r
-        
     def mm_callback(self, filepath):
         if(exists(filepath)):
             print "Saved " + filepath
         else:
             print "Unable to save." + filepath
-        #self.message()
 
     def photo(self):
         self.message_photo=self.user_data_dir + "/photo.jpg"
@@ -212,7 +349,6 @@ class SWMApp(PortalApp):
     def message(self):
         if self.root:
             self.root.clear_widgets()
-        print "Message!!!"
 
         self.message_type=""
         self.message_text=""
@@ -221,7 +357,7 @@ class SWMApp(PortalApp):
         self.message_audio=""
 
         self.types = msg_types
-        #self.layout = GridLayout(cols=2, row_force_default=True, row_default_height=40)
+
         layout = BoxLayout(orientation='vertical')
         
         layout.add_widget(Label(text="Message writing",
@@ -230,10 +366,11 @@ class SWMApp(PortalApp):
                                 height=40, font_size=32,
                                 halign='center', valign='middle'))
         
-        grid = GridLayout(cols=3)
+        grid = GridLayout(cols=2)
+
         grid.add_widget(Label(text="Type:",
-                              size_hint_x=None, width=100,
-                              size_hint_y=None, height=40))
+                      size_hint_x=None, width=300,
+                      size_hint_y=None, height=40))
         self.msg_type = DropDown()
         for t in self.types:
             btn = Button(text=t, size_hint_y=None, height=40)
@@ -241,8 +378,9 @@ class SWMApp(PortalApp):
             self.msg_type.add_widget(btn)
 
         self.type_btn = Button(text="Select type of message...",
-                               size_hint_y=None, height=40)
-        grid.add_widget(self.type_btn)
+                               size_hint_y=None, height=40,
+                               size_hint_x=None, width=600
+        )
 
         self.type_btn.bind(on_release=self.msg_type.open)
 
@@ -250,7 +388,11 @@ class SWMApp(PortalApp):
                           x: setattr(self.type_btn, 'text', x))
 
         self.rec_buttons = BoxLayout(orientation='horizontal',
-                                 height='32dp',size_hint_y=None)
+                                     height='32dp', width=1700,
+                                     size_hint_x=None,size_hint_y=None)
+
+        self.rec_buttons.add_widget(self.type_btn)
+
         self.pht_btn = Button(text="Photo",
                               on_press=lambda a: self.photo())
         self.rec_buttons.add_widget(self.pht_btn)
@@ -264,9 +406,12 @@ class SWMApp(PortalApp):
         self.rec_buttons.add_widget(self.vid_btn)
 
         grid.add_widget(self.rec_buttons)
-            
+
+
+        descr = BoxLayout(orientation='horizontal',height=40,
+                          size_hint_y=None,valign='top')
         grid.add_widget(Label(text="Description:",
-                              size_hint_x=None, width=200,valign='top',
+                              size_hint_x=None, width=300,valign='top',
                               size_hint_y=0.1, height=40))
         self.msg_descr = TextInput()
         def msg_descr_txt_set(i, v):
@@ -274,6 +419,11 @@ class SWMApp(PortalApp):
         self.msg_descr.bind(text=msg_descr_txt_set)
         grid.add_widget(self.msg_descr)
 
+        grid.add_widget(descr)
+        
+        grid.add_widget(BoxLayout(orientation='horizontal',height=400,
+                          size_hint_y=None,valign='top'))
+        
         layout.add_widget(grid)
         
         self.buttons = BoxLayout(orientation='horizontal',
@@ -293,13 +443,10 @@ class SWMApp(PortalApp):
             getattr(self, f)()
 
     def connect(self):
-        print "Connect!!!"
         self.config_save()
         self.show()
 
     def portal(self):
-        print "Portal!!!"
-        #self.stop()
         if self.root:
             self.root.clear_widgets()
 
@@ -315,18 +462,21 @@ class SWMApp(PortalApp):
         msg_btn.font_size=font_large
         buttons.add_widget(msg_btn)
         cfg_btn = Button(text=cancel,
-                         on_press=lambda a: self.show())
+                         on_press=self.show)
         cfg_btn.font_size=font_large
         buttons.add_widget(cfg_btn)
 
         return buttons
         
     def show_sgbs(self):
+        if self.mapview == None:
+            return
+        
         region = self.url + '/swm/map/waste-management-operator-1/region-1'
         region = region.replace("//","/")
         region = region.replace(":/","://")
         url = self.url + '/swm_scripts/get_sgb?region=' + region
-        print url
+
         r=requests.get(url, auth=(self.username, self.password))
         if r.status_code == 200:
             j=r.json()
@@ -345,29 +495,34 @@ class SWMApp(PortalApp):
             self.portal_setup(buttons=self.setup_buttons())
                     
     def show_routes(self):
+        if self.mapview == None:
+            return
+        
         url = self.url + '/swm_scripts/drivers_routes?driver=' + self.username
-        print url
         r=requests.get(url, auth=(self.username, self.password))
+
         if r.status_code == 200:
             j=r.json()
             url = j['region'] + j['route'] + '/@@geo-json.json'
-            print url
             r = requests.get(url, auth=(self.username, self.password))
             if r.status_code == 200:
-                j=r.json()
-                #print "j: " + `j`
-                gjm=GeoJsonMapLayer()
-                gjm.geojson = r.json()
-                #print gjm.geojson
-                self.mapview.add_layer(gjm)
+                try:
+                    j=r.json()
+                    gjm=GeoJsonMapLayer()
+                    gjm.geojson = r.json()
+                    self.mapview.add_layer(gjm)
+                except ValueError:
+                    self.portal_setup(buttons=self.setup_buttons())
             else:
                 self.portal_setup(buttons=self.setup_buttons())
         else:
             self.portal_setup(buttons=self.setup_buttons())
 
     def show_regions(self):
+        if self.mapview == None:
+            return
+        
         url = self.url + '/swm_scripts/get_regions'
-        print url
         r=requests.get(url, auth=(self.username, self.password))
         if r.status_code == 200:
             j=r.json()
@@ -384,12 +539,38 @@ class SWMApp(PortalApp):
             self.portal_setup(buttons=self.setup_buttons())
 
     def show_gps(self):
+        if self.mapview == None:
+            return
+        
         if self.gps:
             self.mgps = MapMarker(lat=self.gps[0], lon=self.gps[1],
                                   source=gps_image)
             self.mapview.add_marker(self.mgps)
-        
 
+    def play_audio(self, text):
+        tts = gTTS(text=text, lang='ru')
+        tts.save('message.mp3')
+        sound = SoundLoader.load('message.mp3')
+        if sound:
+            print("Sound found at %s" % sound.source)
+            print("Sound is %.3f seconds" % sound.length)
+            sound.play()
+            pos = sound.get_pos()
+            time.sleep(1)
+            while sound.state == 'play' and pos != sound.get_pos():
+                time.sleep(1)
+                pos = sound.get_pos()
+        
+    def show_audio(self):
+        print "SHOW AUDIO"
+        if self.mod_audio:
+            for msg in sorted(self.msg_txts):
+                if self.msg_txts[msg]['say']:
+                    p = Process(self.play_audio(self.msg_txts[msg]['text']))
+                    p.start()
+                    p.join()
+                    self.msg_txts[msg]['say'] = 0
+            
     @mainthread
     def on_location(self, **kwargs):
         if hasattr(self, "mgps"):
@@ -405,4 +586,4 @@ class SWMApp(PortalApp):
 
 if __name__ == '__main__':
     SWMApp().run()
-    #LoginApp().run()
+

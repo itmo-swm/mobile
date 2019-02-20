@@ -1,7 +1,7 @@
 [app]
 
 # (str) Application versioning (method 1)
-version = 0.8
+version = 0.9
 
 # (str) Title of your application
 title = Smart Waste Manager
@@ -37,8 +37,8 @@ source.include_patterns = assets/*,images/*.png,data/*.json
 
 # (list) Application requirements
 # comma seperated e.g. requirements = sqlite3,kivy
-#requirements = kivy,futures,openssl,requests,plyer
-requirements = kivy,futures,openssl,android,requests,plyer
+requirements = kivy,futures,openssl,requests,plyer
+#requirements = kivy,futures,openssl,requests,plyer,gtts
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -186,16 +186,16 @@ android.arch = armeabi-v7a
 
 # (str) Name of the certificate to use for signing the debug version
 # Get a list of available identities: buildozer ios list_identities
-#ios.codesign.debug = "iPhone Developer: giggsoff@icloud.com (9SK74M7EK8)"
+ios.codesign.debug = "iPhone Developer: giggsoff@icloud.com (9SK74M7EK8)"
 
 # (str) Name of the certificate to use for signing the release version
-#ios.codesign.release = %(ios.codesign.debug)s
+ios.codesign.release = %(ios.codesign.debug)s
 
 
 [buildozer]
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
-log_level = 1
+log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1

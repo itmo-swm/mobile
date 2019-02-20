@@ -20,11 +20,15 @@ def get_module(base_url=None, username=None, password=None, platform="android",
 
     f=open(tar, "w+")
     url = base_url + '/swm_scripts/mobile_module?platform=' + platform
+    print "get_module URL 1:" + url
     r=requests.get(url, auth=(username, password))
+    print "get_module RESPONSE 1 (%d): %s" % (r.status_code, r.text)
     modname = r.text.strip()
     
     url = base_url + '/swm_scripts/mod2time?module=' + modname
+    print "get_module URL 2:" + url
     r=requests.get(url, auth=(username, password))
+    print "get_module RESPONSE 2 (%d): %s" % (r.status_code, r.text)
     modtime = r.text.strip()
     try:
         print "J1"
@@ -45,8 +49,10 @@ def get_module(base_url=None, username=None, password=None, platform="android",
         swminfo = {"module": {"name": modname, "time": modtime}}
         
     url = base_url + '/swm/modules/' + modname + '/at_download/file'
+    print "get_module URL 3:" + url
 
     r=requests.get(url, auth=(username, password))
+    print "get_module RESPONSE 3 (%d): %s" % (r.status_code, r.text)
     for chunk in r.iter_content(chunk_size=128):
         f.write(chunk)
     f.close()
