@@ -37,7 +37,8 @@ source.include_patterns = assets/*,images/*.png,data/*.json
 
 # (list) Application requirements
 # comma seperated e.g. requirements = sqlite3,kivy
-requirements = kivy,futures,openssl,requests,plyer
+#requirements = kivy,futures,openssl,requests,plyer
+requirements = kivy,futures,openssl,android,requests,plyer
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -185,10 +186,10 @@ android.arch = armeabi-v7a
 
 # (str) Name of the certificate to use for signing the debug version
 # Get a list of available identities: buildozer ios list_identities
-ios.codesign.debug = "iPhone Developer: giggsoff@icloud.com (9SK74M7EK8)"
+#ios.codesign.debug = "iPhone Developer: giggsoff@icloud.com (9SK74M7EK8)"
 
 # (str) Name of the certificate to use for signing the release version
-ios.codesign.release = %(ios.codesign.debug)s
+#ios.codesign.release = %(ios.codesign.debug)s
 
 
 [buildozer]
